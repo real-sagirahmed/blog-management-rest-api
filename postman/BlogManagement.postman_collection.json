@@ -1,0 +1,663 @@
+{
+  "info": {
+    "_postman_id": "9f3d8a22-6e11-4d7c-b34a-91d2e8c04f10",
+    "name": "Blog Management REST API (V1.0)",
+    "description": "End-to-end Postman test suite covering Categories and Posts CRUD, PATCH partial updates, Search/Filter/Sort/Pagination, and RFC 9110 ProblemDetails error contracts (TC-01..TC-17).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Categories",
+      "item": [
+        {
+          "name": "Create Category (201)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const uniqueName = 'Postman Category ' + Date.now();",
+                  "pm.environment.set('tempCategoryName', uniqueName);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('Category response contains expected fields', function () {",
+                  "    pm.expect(json).to.have.property('id');",
+                  "    pm.expect(json.name).to.eql(pm.environment.get('tempCategoryName'));",
+                  "});",
+                  "pm.environment.set('categoryId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{tempCategoryName}}\",\n  \"description\": \"Created during automated Postman verification.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "categories" ]
+            }
+          }
+        },
+        {
+          "name": "TC-17 Create Duplicate Category Name (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 409 Conflict', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('ProblemDetails reports Conflict', function () {",
+                  "    pm.expect(json.status).to.eql(409);",
+                  "    pm.expect(json.title).to.eql('Conflict');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{tempCategoryName}}\",\n  \"description\": \"Duplicate attempt.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "categories" ]
+            }
+          }
+        },
+        {
+          "name": "Get All Categories (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response is an array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array').that.is.not.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/categories",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "categories" ]
+            }
+          }
+        },
+        {
+          "name": "Get Category By ID (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Returned ID matches environment variable', function () {",
+                  "    pm.expect(pm.response.json().id).to.eql(Number(pm.environment.get('categoryId')));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/categories/{{categoryId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "categories", "{{categoryId}}" ]
+            }
+          }
+        },
+        {
+          "name": "Update Category (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 204 No Content', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{tempCategoryName}}\",\n  \"description\": \"Updated category description.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categories/{{categoryId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "categories", "{{categoryId}}" ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Posts CRUD & Querying",
+      "item": [
+        {
+          "name": "TC-04 Create Valid Post (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('Server generated unique slug', function () {",
+                  "    pm.expect(json.slug).to.be.a('string').and.not.empty;",
+                  "    pm.expect(json.updatedAt).to.be.null;",
+                  "});",
+                  "pm.environment.set('postId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Postman ASP.NET Core Guide\",\n  \"excerpt\": \"An introduction to ASP.NET Core Web API.\",\n  \"content\": \"ASP.NET Core is a modern framework for building RESTful web APIs and services.\",\n  \"categoryId\": {{categoryId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/posts",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "posts" ]
+            }
+          }
+        },
+        {
+          "name": "TC-07 Create Duplicate Title Auto-Suffixed Slug (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('Slug received numeric suffix', function () {",
+                  "    pm.expect(json.slug).to.match(/-\\d+$/);",
+                  "});",
+                  "pm.environment.set('secondPostId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Postman ASP.NET Core Guide\",\n  \"excerpt\": \"Second post sharing the same title.\",\n  \"content\": \"Verifying automatic server-side slug deduplication behavior.\",\n  \"categoryId\": {{categoryId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/posts",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "posts" ]
+            }
+          }
+        },
+        {
+          "name": "TC-05 Create Post Missing Title (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('ProblemDetails contains Title validation error', function () {",
+                  "    pm.expect(json.title).to.eql('Validation Error');",
+                  "    pm.expect(json.errors).to.have.property('Title');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"excerpt\": \"Missing title test\",\n  \"content\": \"Content that is long enough to pass min length.\",\n  \"categoryId\": {{categoryId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/posts",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "posts" ]
+            }
+          }
+        },
+        {
+          "name": "TC-06 Create Post Invalid CategoryId (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Invalid Category Test\",\n  \"content\": \"Content that is long enough to pass min length.\",\n  \"categoryId\": 999999\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/posts",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "posts" ]
+            }
+          }
+        },
+        {
+          "name": "TC-01 / TC-13..15 Search, Filter, Sort & Paginate Posts (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('Paginated response structure is valid without content field', function () {",
+                  "    pm.expect(json).to.have.all.keys('items', 'pageNumber', 'pageSize', 'totalCount', 'totalPages');",
+                  "    pm.expect(json.totalCount).to.be.at.least(2);",
+                  "    pm.expect(json.items[0]).to.not.have.property('content');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/posts?search=asp.net&categoryId={{categoryId}}&pageNumber=1&pageSize=10&sortBy=createdAt&sortOrder=desc",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "posts" ],
+              "query": [
+                { "key": "search", "value": "asp.net" },
+                { "key": "categoryId", "value": "{{categoryId}}" },
+                { "key": "pageNumber", "value": "1" },
+                { "key": "pageSize", "value": "10" },
+                { "key": "sortBy", "value": "createdAt" },
+                { "key": "sortOrder", "value": "desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "TC-02 Get Post By ID (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('Full post includes content', function () {",
+                  "    pm.expect(json).to.have.property('content');",
+                  "    pm.expect(json.id).to.eql(Number(pm.environment.get('postId')));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/posts/{{postId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "posts", "{{postId}}" ]
+            }
+          }
+        },
+        {
+          "name": "TC-03 Get Missing Post (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/posts/999999",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "posts", "999999" ]
+            }
+          }
+        },
+        {
+          "name": "TC-08 Update Existing Post (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 204 No Content', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated ASP.NET Core Guide\",\n  \"excerpt\": \"Updated introduction.\",\n  \"content\": \"Updated complete article content for PUT verification.\",\n  \"categoryId\": {{categoryId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/posts/{{postId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "posts", "{{postId}}" ]
+            }
+          }
+        },
+        {
+          "name": "TC-09 Update Missing Post (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Missing Post Update\",\n  \"excerpt\": null,\n  \"content\": \"Updated complete article content.\",\n  \"categoryId\": {{categoryId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/posts/999999",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "posts", "999999" ]
+            }
+          }
+        },
+        {
+          "name": "TC-10 Patch Post Title Only (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 204 No Content', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Advanced ASP.NET Core Guide\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/posts/{{postId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "posts", "{{postId}}" ]
+            }
+          }
+        },
+        {
+          "name": "TC-10b Patch Post Clear Excerpt with Null (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 204 No Content', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"excerpt\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/posts/{{postId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "posts", "{{postId}}" ]
+            }
+          }
+        },
+        {
+          "name": "TC-16 Delete Category With Posts Blocked (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 409 Conflict', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/categories/{{categoryId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "categories", "{{categoryId}}" ]
+            }
+          }
+        },
+        {
+          "name": "TC-11 Delete First Post (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 204 No Content', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/posts/{{postId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "posts", "{{postId}}" ]
+            }
+          }
+        },
+        {
+          "name": "Delete Second Post (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 204 No Content', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/posts/{{secondPostId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "posts", "{{secondPostId}}" ]
+            }
+          }
+        },
+        {
+          "name": "TC-12 Delete Missing Post (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/posts/999999",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "posts", "999999" ]
+            }
+          }
+        },
+        {
+          "name": "Delete Empty Category Cleanup (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 204 No Content', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/categories/{{categoryId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "categories", "{{categoryId}}" ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

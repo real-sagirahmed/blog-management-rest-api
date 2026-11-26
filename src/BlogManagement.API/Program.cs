@@ -1,5 +1,6 @@
 using System.Reflection;
 using BlogManagement.API.Data;
+using BlogManagement.API.DTOs.Common;
 using BlogManagement.API.Middleware;
 using BlogManagement.API.Services.Implementations;
 using BlogManagement.API.Services.Interfaces;
@@ -55,6 +56,9 @@ builder.Services.AddSwaggerGen(options =>
         Description = "A RESTful Blog Management API built with ASP.NET Core 9, Entity Framework Core 9, and Microsoft SQL Server."
     });
 
+    options.MapType<Optional<string?>>(() => new OpenApiSchema { Type = JsonSchemaType.String | JsonSchemaType.Null });
+    options.MapType<Optional<int?>>(() => new OpenApiSchema { Type = JsonSchemaType.Integer | JsonSchemaType.Null, Format = "int32" });
+
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFilename);
     if (File.Exists(xmlPath))
@@ -69,6 +73,7 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
+    await DbSeeder.SeedDevelopmentDataAsync(app.Services);
     app.UseSwagger();
     app.UseSwaggerUI(options =>
     {

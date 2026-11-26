@@ -1,4 +1,5 @@
 using BlogManagement.API.Data;
+using BlogManagement.API.DTOs.Common;
 using BlogManagement.API.DTOs.Posts;
 using BlogManagement.API.Exceptions;
 using BlogManagement.API.Helpers;
@@ -10,6 +11,60 @@ namespace BlogManagement.API.Services.Implementations;
 
 public sealed class PostService(BlogDbContext context) : IPostService
 {
+    public async Task<PagedResponse<PostSummaryResponse>> GetAllAsync(
+        PostQueryParameters parameters,
+        CancellationToken cancellationToken = default)
+    {
+        var query = context.Posts.AsNoTracking();
+
+        if (parameters.CategoryId.HasValue)
+        {
+            query = query.Where(p => p.CategoryId == parameters.CategoryId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(parameters.Search))
+        {
+            var searchLower = parameters.Search.Trim().ToLowerInvariant();
+            query = query.Where(p =>
+                p.Title.ToLower().Contains(searchLower) ||
+                p.Content.ToLower().Contains(searchLower));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var isDescending = string.Equals(parameters.SortOrder, "desc", StringComparison.OrdinalIgnoreCase);
+        query = (parameters.SortBy.ToLowerInvariant(), isDescending) switch
+        {
+            ("title", false) => query.OrderBy(p => p.Title).ThenBy(p => p.Id),
+            ("title", true) => query.OrderByDescending(p => p.Title).ThenByDescending(p => p.Id),
+            ("createdat", false) => query.OrderBy(p => p.CreatedAt).ThenBy(p => p.Id),
+            _ => query.OrderByDescending(p => p.CreatedAt).ThenByDescending(p => p.Id)
+        };
+
+        var items = await query
+            .Skip((parameters.PageNumber - 1) * parameters.PageSize)
+            .Take(parameters.PageSize)
+            .Select(p => new PostSummaryResponse(
+                p.Id,
+                p.Title,
+                p.Slug,
+                p.CategoryId,
+                p.Category.Name,
+                p.CreatedAt))
+            .ToListAsync(cancellationToken);
+
+        var totalPages = totalCount == 0
+            ? 0
+            : (int)Math.Ceiling(totalCount / (double)parameters.PageSize);
+
+        return new PagedResponse<PostSummaryResponse>(
+            items,
+            parameters.PageNumber,
+            parameters.PageSize,
+            totalCount,
+            totalPages);
+    }
+
     public async Task<PostResponse> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         var post = await context.Posts

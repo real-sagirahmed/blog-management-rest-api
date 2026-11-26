@@ -213,4 +213,105 @@ public class PostServiceTests
 
         await Assert.ThrowsAsync<NotFoundException>(() => service.DeleteAsync(999));
     }
+
+    [Fact]
+    public async Task GetAllAsync_SupportsPaginationAndMetadata()
+    {
+        await using var scope = await SqliteDbContextScope.CreateAsync();
+        var cat = await SeedCategoryAsync(scope, "Backend");
+        var baseTime = new DateTime(2026, 11, 1, 10, 0, 0, DateTimeKind.Utc);
+
+        for (var i = 1; i <= 5; i++)
+        {
+            scope.Context.Posts.Add(new Post
+            {
+                Title = $"Post {i}",
+                Slug = $"post-{i}",
+                Content = $"Body content for post number {i}.",
+                CategoryId = cat.Id,
+                CreatedAt = baseTime.AddMinutes(i)
+            });
+        }
+        await scope.Context.SaveChangesAsync();
+
+        var service = new PostService(scope.Context);
+
+        var page1 = await service.GetAllAsync(new PostQueryParameters { PageNumber = 1, PageSize = 2 });
+        var page3 = await service.GetAllAsync(new PostQueryParameters { PageNumber = 3, PageSize = 2 });
+        var emptyPage = await service.GetAllAsync(new PostQueryParameters { PageNumber = 4, PageSize = 2 });
+
+        Assert.Equal(5, page1.TotalCount);
+        Assert.Equal(3, page1.TotalPages);
+        Assert.Equal(["Post 5", "Post 4"], page1.Items.Select(x => x.Title));
+        Assert.Single(page3.Items);
+        Assert.Equal("Post 1", page3.Items[0].Title);
+        Assert.Empty(emptyPage.Items);
+    }
+
+    [Fact]
+    public async Task GetAllAsync_FiltersByCategoryAndCaseInsensitiveSearch()
+    {
+        await using var scope = await SqliteDbContextScope.CreateAsync();
+        var aspNet = await SeedCategoryAsync(scope, "ASP.NET Core");
+        var sql = await SeedCategoryAsync(scope, "SQL Server");
+
+        scope.Context.Posts.AddRange(
+            new Post
+            {
+                Title = "REST API Fundamentals",
+                Slug = "rest-api-fundamentals",
+                Content = "Learn ASP.NET Core Web API design.",
+                CategoryId = aspNet.Id,
+                CreatedAt = DateTime.UtcNow
+            },
+            new Post
+            {
+                Title = "Indexing Deep Dive",
+                Slug = "indexing-deep-dive",
+                Content = "SQL Server execution plans and ASP.NET Core tips.",
+                CategoryId = sql.Id,
+                CreatedAt = DateTime.UtcNow
+            });
+        await scope.Context.SaveChangesAsync();
+
+        var service = new PostService(scope.Context);
+
+        var searchAll = await service.GetAllAsync(new PostQueryParameters { Search = "asp.net" });
+        var filtered = await service.GetAllAsync(new PostQueryParameters { Search = "asp.net", CategoryId = aspNet.Id });
+
+        Assert.Equal(2, searchAll.TotalCount);
+        Assert.Single(filtered.Items);
+        Assert.Equal("REST API Fundamentals", filtered.Items[0].Title);
+    }
+
+    [Theory]
+    [InlineData("title", "asc", new[] { "Alpha", "Beta", "Gamma" })]
+    [InlineData("title", "desc", new[] { "Gamma", "Beta", "Alpha" })]
+    [InlineData("createdAt", "asc", new[] { "Gamma", "Alpha", "Beta" })]
+    [InlineData("createdAt", "desc", new[] { "Beta", "Alpha", "Gamma" })]
+    public async Task GetAllAsync_SortsByRequestedFieldAndDirection(
+        string sortBy,
+        string sortOrder,
+        string[] expectedOrder)
+    {
+        await using var scope = await SqliteDbContextScope.CreateAsync();
+        var cat = await SeedCategoryAsync(scope);
+        var t0 = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        scope.Context.Posts.AddRange(
+            new Post { Title = "Gamma", Slug = "gamma", Content = "Content gamma body.", CategoryId = cat.Id, CreatedAt = t0.AddHours(1) },
+            new Post { Title = "Alpha", Slug = "alpha", Content = "Content alpha body.", CategoryId = cat.Id, CreatedAt = t0.AddHours(2) },
+            new Post { Title = "Beta", Slug = "beta", Content = "Content beta body.", CategoryId = cat.Id, CreatedAt = t0.AddHours(3) });
+        await scope.Context.SaveChangesAsync();
+
+        var service = new PostService(scope.Context);
+
+        var result = await service.GetAllAsync(new PostQueryParameters
+        {
+            SortBy = sortBy,
+            SortOrder = sortOrder
+        });
+
+        Assert.Equal(expectedOrder, result.Items.Select(x => x.Title));
+    }
 }

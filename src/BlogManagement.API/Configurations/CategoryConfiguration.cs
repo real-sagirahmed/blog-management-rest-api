@@ -1,0 +1,29 @@
+using BlogManagement.API.Models;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace BlogManagement.API.Configurations;
+
+public class CategoryConfiguration : IEntityTypeConfiguration<Category>
+{
+    public void Configure(EntityTypeBuilder<Category> builder)
+    {
+        builder.ToTable("Categories");
+
+        builder.HasKey(c => c.Id);
+
+        builder.Property(c => c.Name)
+            .IsRequired()
+            .HasMaxLength(100);
+
+        builder.HasIndex(c => c.Name)
+            .IsUnique()
+            .HasDatabaseName("IX_Categories_Name");
+
+        builder.Property(c => c.Description)
+            .HasMaxLength(500);
+
+        builder.Property(c => c.CreatedAt)
+            .IsRequired();
+    }
+}

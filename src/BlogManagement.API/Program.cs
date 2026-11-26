@@ -1,6 +1,8 @@
 using System.Reflection;
 using BlogManagement.API.Data;
 using BlogManagement.API.Middleware;
+using BlogManagement.API.Services.Implementations;
+using BlogManagement.API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
@@ -16,6 +18,8 @@ if (string.IsNullOrWhiteSpace(connectionString))
 
 builder.Services.AddDbContext<BlogDbContext>(options =>
     options.UseSqlServer(connectionString));
+
+builder.Services.AddScoped<ICategoryService, CategoryService>();
 
 builder.Services.AddProblemDetails();
 

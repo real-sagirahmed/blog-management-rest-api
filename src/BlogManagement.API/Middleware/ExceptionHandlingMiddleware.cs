@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using BlogManagement.API.Exceptions;
+using BlogManagement.API.Helpers;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace BlogManagement.API.Middleware;
@@ -41,7 +41,7 @@ public sealed class ExceptionHandlingMiddleware(
         var (statusCode, title, detail) = exception switch
         {
             ApiException apiEx => (apiEx.StatusCode, apiEx.Title, apiEx.Message),
-            DbUpdateException dbEx when IsConstraintConflict(dbEx) => (
+            DbUpdateException dbEx when DbExceptionClassifier.IsConstraintConflict(dbEx) => (
                 StatusCodes.Status409Conflict,
                 "Conflict",
                 "The operation conflicted with an existing record or related data."
@@ -80,26 +80,6 @@ public sealed class ExceptionHandlingMiddleware(
             options: null,
             contentType: "application/problem+json",
             cancellationToken: context.RequestAborted);
-    }
-
-    private static bool IsConstraintConflict(DbUpdateException exception)
-    {
-        if (exception.InnerException is SqlException sqlEx)
-        {
-            // 2601 / 2627: unique index / primary key violation; 547: foreign key constraint violation.
-            return sqlEx.Number is 2601 or 2627 or 547;
-        }
-
-        // Support SQLite constraint errors (code 19) during in-memory integration tests without
-        // taking a production package dependency on Microsoft.Data.Sqlite.
-        var inner = exception.InnerException;
-        if (inner?.GetType().FullName == "Microsoft.Data.Sqlite.SqliteException")
-        {
-            var errorCodeObj = inner.GetType().GetProperty("SqliteErrorCode")?.GetValue(inner);
-            return errorCodeObj is int errorCode && errorCode == 19;
-        }
-
-        return false;
     }
 
     private static string GetRfc9110TypeUri(int statusCode) => statusCode switch

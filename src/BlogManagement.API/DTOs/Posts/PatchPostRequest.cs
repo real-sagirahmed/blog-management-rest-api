@@ -5,9 +5,16 @@ namespace BlogManagement.API.DTOs.Posts;
 
 public sealed class PatchPostRequest : IValidatableObject
 {
+    /// <summary>Updated post title (3–200 characters). Omit to keep unchanged.</summary>
     public Optional<string?> Title { get; init; }
+
+    /// <summary>Updated post excerpt (max 500 characters), or explicit null to clear. Omit to keep unchanged.</summary>
     public Optional<string?> Excerpt { get; init; }
+
+    /// <summary>Updated post body content (min 10 characters). Omit to keep unchanged.</summary>
     public Optional<string?> Content { get; init; }
+
+    /// <summary>Updated category ID (positive integer). Omit to keep unchanged.</summary>
     public Optional<int?> CategoryId { get; init; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)

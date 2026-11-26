@@ -20,6 +20,7 @@ builder.Services.AddDbContext<BlogDbContext>(options =>
     options.UseSqlServer(connectionString));
 
 builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IPostService, PostService>();
 
 builder.Services.AddProblemDetails();
 

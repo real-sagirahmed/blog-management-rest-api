@@ -229,7 +229,7 @@ Clears `excerpt` while keeping `title`, `content`, `categoryId`, and `slug` unch
 ### Clone & Restore
 
 ```bash
-git clone https://github.com/<your-username>/blog-management-rest-api.git
+git clone https://github.com/real-sagirahmed/blog-management-rest-api.git
 cd blog-management-rest-api
 dotnet restore
 ```
@@ -334,3 +334,9 @@ Planned extensions on top of this V1.0 core API:
 * **Soft Delete & Audit Trail:** Recoverable deletions with query filters.
 * **Comments API:** Moderated reader comments per post.
 * **Output Caching & Rate Limiting:** Built-in ASP.NET Core 9 caching and abuse protection.
+
+---
+
+## 16. License
+
+This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
